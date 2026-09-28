@@ -411,7 +411,7 @@ const SB_KEY  = 'sb_publishable_XKTZN1dUro-ejLQfGM3SQg_B2o_SaXK';
 const ADMIN_PASSWORD = 'qiandao123';
 
 // 定位围栏：华南理工大学大学城校区 A3栋（WGS-84 坐标，由高德坐标换算）
-const GEOFENCE = { lat: 23.051055, lng: 113.399987, radius: 150, label: 'A3栋附近150米内' };
+const GEOFENCE = { lat: 23.051055, lng: 113.399987, radius: 260, label: 'A3栋附近260米内' };
 
 /* ============================================================
  * 课表数据 & 核心逻辑（与服务端同源）
@@ -445,7 +445,7 @@ const SCHEDULE = [
   { day:2, bucket:'afternoon',name:'大学化学', weeks:'3-12,15-17', slots:'5-6', loc:'A3405', teacher:'毕然、张磊' },
   { day:2, bucket:'evening',  name:'C++程序设计基础', weeks:'3-12', slots:'9-11', loc:'A1203', teacher:'董敏', remark:'第15周仅上9-10节' },
   { day:2, bucket:'evening',  name:'C++程序设计基础', weeks:'15', slots:'9-10', loc:'A1203', teacher:'董敏' },
-  { day:3, bucket:'morning',  name:'学术英语（一）', weeks:'3-12,15-17', slots:'1-2', loc:'A4404', teacher:'刘汉鹏' },
+  { day:3, bucket:'morning',  name:'学术英语（一）', weeks:'3-12(双),15-17(双)', slots:'1-2', loc:'A4404', teacher:'刘汉鹏' },
   { day:3, bucket:'morning',  name:'身体素质', weeks:'3-12,15-18,21-22', slots:'3-4', loc:'生活区田径场', teacher:'杜鹏远' },
   { day:4, bucket:'morning',  name:'线性代数与解析几何', weeks:'3-11(单),15-17(单)', slots:'1-2', loc:'A3303', teacher:'丘东涛' },
   { day:4, bucket:'morning',  name:'微积分Ⅱ(一)', weeks:'3-12,15-17', slots:'3-4', loc:'A3408', teacher:'徐娇' },
