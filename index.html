@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>每日签到</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(165deg, #4f6ef7 0%, #5b8def 45%, #6fb3f5 100%);
+    background-attachment: fixed;
+    color: #1e293b;
+    min-height: 100%;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  body.admin-mode { background: #f1f5f9; padding-bottom: 0; }
+
+  /* ================= 学生端 ================= */
+  #viewStudent { display: block; }
+  body.admin-mode #viewStudent { display: none; }
+  .app { max-width: 560px; margin: 0 auto; padding: 18px 14px 28px; }
+  header { text-align: center; color: #fff; padding: 8px 0 16px; }
+  header h1 { font-size: 24px; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(30,41,59,.25); }
+  .clock { margin-top: 6px; font-size: 13px; opacity: .9; font-variant-numeric: tabular-nums; }
+  .card { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 10px 30px rgba(30, 58, 138, .18); margin-bottom: 14px; }
+
+  .status-card { text-align: center; padding: 22px 18px; transition: .3s; }
+  .status-card.is-open { background: linear-gradient(160deg, #18c269, #0ea95b); color: #fff; }
+  .status-card.is-class { background: linear-gradient(160deg, #5b7cf0, #3b5bdb); color: #fff; }
+  .status-card.is-closed { background: #fff; color: #475569; }
+  .status-label { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+  .status-sub { margin-top: 8px; font-size: 14px; opacity: .92; }
+  .countdown { margin-top: 12px; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+  .is-closed .countdown { color: #4f6ef7; }
+  .countdown-cap { font-size: 12px; opacity: .8; margin-top: 2px; letter-spacing: 0; }
+  .miss-warn { display:inline-block; margin-top:9px; background:#d8332f; color:#fff; font-size:14px; font-weight:800; padding:7px 14px; border-radius:999px; letter-spacing:.5px; box-shadow:0 4px 14px rgba(216,51,47,.45); animation: warnPulse 1.2s infinite; }
+  .miss-warn .hl { color:#ffe27a; }
+  @keyframes warnPulse { 50% { transform: scale(1.04); } }
+  .lv-warn { display:inline-block; margin-top:9px; background:#fff3d6; color:#9a7415; font-size:13.5px; font-weight:800; padding:5px 13px; border-radius:999px; letter-spacing:.5px; }
+
+  .period-bar { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .period-chip { flex: 1 1 108px; min-width: 108px; background: rgba(255,255,255,.92); border-radius: 14px; padding: 11px 10px; text-align: center; font-size: 13px; color: #475569; box-shadow: 0 4px 14px rgba(30,58,138,.12); }
+  .period-chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; margin-right: 5px; vertical-align: 1px; }
+  .period-chip .range { display: block; font-size: 11px; color: #94a3b8; margin-top: 4px; font-weight: 700; }
+  .period-chip.is-open { background: #18c269; color: #fff; }
+  .period-chip.is-open .dot { background: #fff; animation: blink 1s infinite; }
+  .period-chip.is-open .range { color: rgba(255,255,255,.9); }
+  .period-chip.is-ongoing { background: #4f6ef7; color: #fff; }
+  .period-chip.is-ongoing .dot { background: #fff; }
+  .period-chip.is-ongoing .range { color: rgba(255,255,255,.9); }
+  .period-chip.is-closed .dot { background: #94a3b8; }
+  .period-chip .crs { display: block; font-size: 10.5px; color: #64748b; margin-top: 6px; max-width: 100%; line-height: 1.55; text-align: left; }
+  .period-chip.is-open .crs, .period-chip.is-ongoing .crs { color: rgba(255,255,255,.88); }
+  .period-chip .crs-line { display: flex; justify-content: space-between; gap: 4px; white-space: nowrap; }
+  .period-chip .crs-line .n { overflow: hidden; text-overflow: ellipsis; }
+  .period-chip .crs-line .t { font-variant-numeric: tabular-nums; flex-shrink: 0; opacity: .9; }
+  .period-bar-title { font-size: 12.5px; color: rgba(255,255,255,.88); font-weight: 700; margin: 0 4px 8px; letter-spacing: .5px; }
+  .period-bar-title + .period-bar { margin-bottom: 14px; }
+  .period-bar:empty { display: none; }
+  @keyframes blink { 50% { opacity: .3; } }
+
+  .field-label { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 10px; }
+  .search-box { width: 100%; border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; font-size: 15px; outline: none; transition: .2s; }
+  .search-box:focus { border-color: #5b8def; background: #f8faff; }
+  .name-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; margin-top: 12px; align-content: start; padding: 4px 2px 8px; }
+  @media (max-width: 640px){ .name-grid { max-height: min(56vh, 460px); min-height: 150px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-margin-top: 20px; } }
+  .name-chip { border: 1.5px solid #e2e8f0; background: #f8fafc; border-radius: 10px; padding: 10px 4px; font-size: 14px; text-align: center; cursor: pointer; transition: .15s; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name-chip:active { transform: scale(.95); }
+  .name-chip.selected { background: #4f6ef7; border-color: #4f6ef7; color: #fff; font-weight: 700; }
+  .name-chip.done { background: #e7f9f0; border-color: #a7e9c8; color: #0c8a51; }
+  .name-chip.done.selected { background: #0ea95b; border-color: #0ea95b; color: #fff; }
+  .empty-tip { grid-column: 1 / -1; text-align: center; color: #94a3b8; font-size: 13px; padding: 14px 0; }
+
+  .sign-btn { width: 100%; margin-top: 14px; height: 56px; border: none; border-radius: 14px; font-size: 18px; font-weight: 800; letter-spacing: 2px; cursor: pointer; background: linear-gradient(13deg, #18c269, #0ea95b); color: #fff; box-shadow: 0 8px 20px rgba(14,169,91,.35); transition: .15s; }
+  .sign-btn:active:not(:disabled) { transform: scale(.98); }
+  .sign-btn:disabled { background: #cbd5e1; box-shadow: none; color: #f1f5f9; cursor: not-allowed; letter-spacing: 1px; font-size: 16px; }
+
+  .signed-head { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 10px; }
+  .signed-head b { color: #0ea95b; font-size: 17px; }
+  .signed-list { display: flex; flex-wrap: wrap; gap: 7px; max-height: 190px; overflow-y: auto; }
+  .signed-item { background: #e7f9f0; color: #0c8a51; border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .signed-item .t { color: #65a388; font-size: 11px; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .signed-none { color: #94a3b8; font-size: 13px; padding: 6px 0; }
+
+  .foot { text-align: center; color: rgba(255,255,255,.85); font-size: 11px; line-height: 1.7; }
+  .foot a { color: rgba(255,255,255,.85); text-decoration: underline; }
+
+  .day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .day-head .field-label { margin-bottom: 0; }
+  .week-btn { border: 1.5px solid #4f6ef7; background: #eef2ff; color: #4f6ef7; border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .week-btn:active { transform: scale(.95); }
+  .course-item { border: 1px solid #eef2f7; border-left: 4px solid #4f6ef7; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: #fbfcff; }
+  .course-item:last-child { margin-bottom: 0; }
+  .course-name { font-size: 15px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+  .course-meta { font-size: 12.5px; color: #64748b; margin-top: 5px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .course-meta .tag { color: #4f6ef7; font-weight: 700; }
+  .course-remark { font-size: 12px; color: #ef9c1a; margin-top: 5px; }
+  .day-empty { text-align: center; color: #94a3b8; font-size: 13px; padding: 14px 0 6px; line-height: 1.8; }
+
+  .wmask { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; z-index: 60; }
+  .wmask.show { display: flex; flex-direction: column; justify-content: flex-end; }
+  .wpanel { background: #f6f8fc; width: 100%; max-width: 560px; margin: 0 auto; height: 92%; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; animation: slideUp .25s ease; overflow: hidden; }
+  @keyframes slideUp { from { transform: translateY(100%); } }
+  .whead { display: flex; align-items: center; gap: 8px; padding: 14px 16px; background: #fff; border-bottom: 1px solid #e8edf4; }
+  .whead .nav { width: 36px; height: 36px; border: 1px solid #e2e8f0; background: #fff; border-radius: 10px; font-size: 17px; cursor: pointer; color: #475569; }
+  .whead .nav:active { background: #f1f5f9; }
+  .whead .title { flex: 1; text-align: center; font-size: 16px; font-weight: 800; color: #1e293b; }
+  .whead .close { width: 36px; height: 36px; border: none; background: #f1f5f9; border-radius: 10px; font-size: 15px; cursor: pointer; color: #64748b; }
+  .wbody { flex: 1; overflow-y: auto; padding: 14px; }
+  .wday { margin-bottom: 14px; }
+  .wday-head { font-size: 14px; font-weight: 800; color: #334155; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; }
+  .wday-head .d { color: #94a3b8; font-size: 12px; font-weight: 600; }
+  .wday-head .today-badge { background: #4f6ef7; color: #fff; font-size: 10px; border-radius: 6px; padding: 2px 6px; font-weight: 700; }
+  .wcourse { background: #fff; border-radius: 12px; padding: 11px 13px; margin-bottom: 8px; border-left: 4px solid #4f6ef7; }
+  .wcourse.off { border-left-color: #e2e8f0; background: #f8fafc; opacity: .55; }
+  .wcourse .nm { font-size: 14px; font-weight: 700; color: #1e293b; }
+  .wcourse .mm { font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+  .wcourse .wk { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  .wnone { font-size: 12px; color: #b6c1d1; padding: 2px 0 6px 4px; }
+
+  .mask { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(2px); }
+  .mask.show { display: flex; }
+  .toast { background: #fff; border-radius: 20px; padding: 30px 34px; text-align: center; width: 78%; max-width: 320px; animation: pop .25s ease; }
+  @keyframes pop { from { transform: scale(.8); opacity: 0; } }
+  .toast-icon { width: 74px; height: 74px; border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #fff; font-weight: 800; }
+  .toast-icon.ok { background: linear-gradient(135deg, #18c269, #0ea95b); }
+  .toast-icon.warn { background: linear-gradient(135deg, #f6b73c, #ef9c1a); }
+  .toast-icon.err { background: linear-gradient(135deg, #f87171, #e04444); }
+  .toast-title { font-size: 19px; font-weight: 800; color: #1e293b; }
+  .toast-sub { margin-top: 8px; font-size: 14px; color: #64748b; line-height: 1.6; }
+
+  /* ================= 管理端 ================= */
+  #viewAdmin { display: none; }
+  body.admin-mode #viewAdmin { display: block; }
+
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .login-card { background: #fff; border-radius: 18px; padding: 34px 30px; width: 100%; max-width: 360px; box-shadow: 0 12px 36px rgba(30,58,138,.15); text-align: center; }
+  .login-card .logo { font-size: 44px; }
+  .login-card h2 { margin: 10px 0 4px; font-size: 20px; }
+  .login-card p { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+  .login-card input { width: 100%; border: 2px solid #e2e8f0; border-radius: 12px; padding: 13px 14px; font-size: 15px; outline: none; margin-bottom: 12px; }
+  .login-card input:focus { border-color: #4f6ef7; }
+  .login-card button { width: 100%; height: 48px; border: none; border-radius: 12px; background: #4f6ef7; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .login-card button:active { transform: scale(.98); }
+  .login-err { color: #e04444; font-size: 13px; min-height: 18px; margin-bottom: 8px; }
+
+  .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 14px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; }
+  .topbar h1 { font-size: 18px; margin-right: auto; }
+  .nav-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 9px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  .nav-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+  .nav-btn.primary { background: #4f6ef7; border-color: #4f6ef7; color: #fff; }
+  .nav-btn.green { background: #0ea95b; border-color: #0ea95b; color: #fff; }
+  #dateInput { border: 1px solid #e2e8f0; border-radius: 9px; padding: 8px 10px; font-size: 14px; outline: none; }
+  .autotag { font-size: 12px; color: #0ea95b; }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 20px; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .sum-card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 2px 10px rgba(30,58,138,.06); }
+  .sum-card .pname { font-size: 14px; font-weight: 700; color: #475569; }
+  .sum-card .pcrs { font-size: 12px; color: #94a3b8; margin: 2px 0 4px; line-height: 1.5; }
+  .notice-card { grid-column: 1 / -1; background: #fff; border-radius: 14px; padding: 28px; text-align: center; color: #94a3b8; font-size: 14px; box-shadow: 0 2px 10px rgba(30,58,138,.06); }
+  .front-card { grid-column: 1 / -1; border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(30,58,138,.08); }
+  .front-card.miss { background: linear-gradient(150deg, #fdecec, #fbdcdc); border: 1.5px solid #f3b0b0; }
+  .front-card.leave { background: linear-gradient(150deg, #fff7df, #ffefc2); border: 1.5px solid #ecd89b; }
+  .front-card .fc-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+  .front-card.miss .fc-title { color: #c62828; }
+  .front-card.leave .fc-title { color: #92610a; }
+  .front-card .fc-names { font-size: 13.5px; line-height: 1.9; color: #4a1f1f; }
+  .front-card.leave .fc-names { color: #6b5013; }
+  .front-card .fc-empty { font-size: 13px; color: #94a3b8; }
+  .front-card .fc-chip { display:inline-block; background:#c62828; color:#fff; font-size:12px; font-weight:800; border-radius:999px; padding:2px 9px; margin:2px 3px 0 0; }
+  .front-card.leave .fc-chip { background:#b9852a; }
+  .sum-card .pnum { font-size: 28px; font-weight: 800; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+  .sum-card .pnum .all { font-size: 15px; color: #94a3b8; font-weight: 600; }
+  .bar { height: 8px; background: #eef2f7; border-radius: 99px; overflow: hidden; margin-bottom: 10px; }
+  .bar i { display: block; height: 100%; border-radius: 99px; transition: width .4s; }
+  .sum-card.full .bar i { background: #18c269; }
+  .missing { font-size: 12px; color: #e04444; line-height: 1.7; max-height: 74px; overflow-y: auto; }
+  .missing b { color: #64748b; font-weight: 600; }
+
+  /* 异常签到预警卡 */
+  .alert-card { grid-column: 1 / -1; background: linear-gradient(160deg,#fff8e8,#fff3d6); border: 1px solid #f3de9a; border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(30,58,138,.06); }
+  .alert-title { font-size: 15px; font-weight: 800; color: #b97a0c; margin-bottom: 6px; }
+  .alert-period { font-size: 12.5px; font-weight: 800; color: #92610a; margin: 10px 0 3px; }
+  .alert-line { font-size: 12.5px; color: #7c5a17; line-height: 1.7; padding-left: 10px; }
+
+  /* 设备绑定 */
+  .bind-nav { background: #eef4ff; color: #2b5fd9; font-weight: 700; }
+  .bind-banner { background: linear-gradient(135deg,#e8f7ee,#dcf2e5); border: 1px solid #a9dcc0; color: #1f7a4c; border-radius: 12px; padding: 13px 15px; font-size: 14px; font-weight: 700; line-height: 1.6; margin-bottom: 14px; }
+  .bind-banner small { display:block; font-weight: 500; color: #4a8a68; font-size: 12px; margin-top: 2px; }
+  .bind-notice { margin-top: 12px; background: #f4f8ff; border: 1px dashed #a8c4f0; border-radius: 10px; padding: 10px 13px; font-size: 12.5px; color: #4a6a9c; line-height: 1.7; }
+  .bind-notice b { color: #2b5fd9; }
+  .bind-stat { background: linear-gradient(135deg,#eef4ff,#e4edff); border: 1px solid #c4d6fb; border-radius: 14px; padding: 16px 20px; font-size: 15px; font-weight: 800; color: #2b4fa3; box-shadow: 0 2px 10px rgba(30,58,138,.06); }
+  .bind-stat .big { font-size: 26px; color: #2b5fd9; }
+  .bind-unbound { background: #fff; border: 1px solid #f0d3d3; border-radius: 14px; padding: 14px 18px; font-size: 13px; color: #b3402f; line-height: 1.9; box-shadow: 0 2px 10px rgba(30,58,138,.05); }
+  .bind-unbound b { color: #64748b; }
+  .unbind-btn { background: #fdecec; color: #d33f3f; border: 1px solid #f3c2c2; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .unbind-btn:active { background: #f9d8d8; }
+  td.dev-id { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #64748b; }
+
+  .table-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(30,58,138,.06); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { background: #f8fafc; padding: 12px 14px; text-align: left; font-size: 13px; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  th:first-child, td:first-child { min-width: 116px; white-space: nowrap; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: #fbfdff; }
+  td.time { font-variant-numeric: tabular-nums; color: #0c8a51; font-size: 13px; white-space: nowrap; }
+  td.miss { color: #cbd5e1; text-align: center; }
+  td.no { background: #fef2f2; color: #e04444; text-align: center; font-weight: 700; }
+  .hint { font-size: 12px; color: #94a3b8; margin: 12px 2px; }
+
+  @media (max-width: 640px) {
+    .summary { grid-template-columns: 1fr; }
+    .container { padding: 12px; }
+    .topbar h1 { font-size: 16px; width: 100%; margin-right: 0; }
+    thead th { position: static; }
+  }
+
+  /* ---- 学生端：请假标记 ---- */
+  .name-chip.leave { background: #fff7e0; border-color: #f3dd9a; color: #9a7415; }
+  .name-chip.leave.selected { background: #4f6ef7; border-color: #4f6ef7; color: #fff; }
+  .signed-item.leave { background: #fef3d6; color: #9a7415; }
+  .signed-item.leave .t { color: #c4a35c; }
+
+  /* ---- 管理端：代签/请假迷你按钮 ---- */
+  .adm-tag { display:inline-block; background:#eef4ff; color:#2b5fd9; border:1px solid #c4d6fb; border-radius:5px; font-size:10px; padding:0 4px; font-weight:800; vertical-align:1px; }
+  .lv-tag { display:inline-block; background:#fff3d6; color:#9a7415; border:1px solid #ecd89b; border-radius:6px; font-size:12px; padding:2px 8px; font-weight:700; }
+  .mini-btn { border-radius:7px; border:1px solid; padding:4px 9px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; margin:2px 2px 0 0; }
+  .mini-btn:active { transform:scale(.94); }
+  .mini-btn.sign { background:#e8f7ee; border-color:#9fd9bb; color:#0c8a51; }
+  .mini-btn.leave { background:#fff7e0; border-color:#ecd89b; color:#9a7415; }
+  .mini-btn.revoke { background:#fdecec; border-color:#f3c2c2; color:#d33f3f; padding:3px 7px; }
+  td.act-cell { white-space:normal; min-width:108px; }
+
+  /* ================= 导出页 ================= */
+  #viewExport { display: none; }
+  body.exp-mode #viewExport { display: block; }
+  body.exp-mode { background: #eef2f7; overflow-y: auto; }
+  body.exp-mode #viewStudent, body.exp-mode #viewAdmin { display: none !important; }
+
+  .exp-top { background:#fff; border-bottom:1px solid #e2e8f0; padding:12px 18px; padding-top:max(12px, env(safe-area-inset-top)); display:flex; align-items:center; gap:12px; flex-wrap:wrap; position:static; box-shadow:0 2px 8px rgba(30,58,138,.06); }
+  .exp-top .exp-title { font-size:17px; font-weight:800; margin-right:auto; color:#1e293b; }
+  .exp-top .exp-title small { display:block; font-size:12px; color:#94a3b8; font-weight:500; margin-top:2px; }
+  .exp-excel { border:none; background:linear-gradient(135deg,#21b35f,#0e9c52); color:#fff; border-radius:10px; padding:10px 20px; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(14,156,82,.3); }
+  .exp-excel:active { transform:scale(.97); }
+  .exp-wrap { max-width:1080px; margin:0 auto; padding:18px; overflow:visible; }
+  .exp-legend { background:#fff; border-radius:12px; padding:12px 16px; font-size:13px; color:#475569; margin-bottom:14px; line-height:2; box-shadow:0 2px 8px rgba(30,58,138,.05); }
+  .exp-legend .sw { display:inline-block; width:13px; height:13px; border-radius:3px; vertical-align:-2px; margin:0 5px 0 12px; border:1px solid rgba(0,0,0,.08); }
+  .exp-section { margin-bottom:26px; }
+  .exp-section h3 { font-size:16px; color:#1e293b; margin-bottom:10px; }
+  .exp-section h3 small { font-size:12px; color:#94a3b8; font-weight:500; margin-left:8px; }
+  /* 表格单元格分级标注 */
+  td.cs-abs { background:#fde2e2 !important; color:#c62828; font-weight:800; text-align:center; }
+  td.cs-leave { background:#fff7d6 !important; color:#8a6d1a; text-align:center; }
+  td.cs-ok { color:#0c8a51; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td.cs-wait { color:#cbd5e1; text-align:center; }
+  th.cs-h { white-space:nowrap; }
+  th.cs-h small { font-weight:500; color:#94a3b8; font-size:11px; display:block; margin-top:2px; }
+  #viewExport .table-card { overflow:visible; border-radius:14px; }
+  #viewExport table { scroll-margin-top:0; }
+</style>
+</head>
+<body>
+
+<!-- ============ 学生端 ============ -->
+<div id="viewStudent">
+  <div class="app">
+    <header>
+      <h1>📋 每日签到</h1>
+      <div class="clock" id="clock">加载中…</div>
+    </header>
+
+    <div class="status-card card is-closed" id="statusCard">
+      <div class="status-label" id="statusLabel">正在获取时间…</div>
+      <div class="status-sub" id="statusSub"></div>
+      <div class="countdown" id="countdown">--:--:--</div>
+      <div class="countdown-cap" id="countdownCap"></div>
+    </div>
+
+    <div class="period-bar-title" id="periodTitle" style="display:none;">📌 今日签到时段</div>
+    <div class="period-bar" id="periodBar"></div>
+
+    <div class="card">
+      <div class="day-head">
+        <span class="field-label">📚 今日课程</span>
+        <button class="week-btn" id="weekBtn">📅 完整课表</button>
+      </div>
+      <div id="todayList"></div>
+    </div>
+
+    <div class="card">
+      <div class="bind-banner" id="bindBanner" style="display:none;"></div>
+      <div id="pickZone">
+        <div class="field-label">选择你的姓名</div>
+        <input class="search-box" id="search" type="text" placeholder="🔍 输入名字快速查找" autocomplete="off">
+        <div class="name-grid" id="nameGrid"></div>
+        <div class="bind-notice">📌 本次签到成功后，本设备将自动与你的姓名绑定，以后打开可直接签到，无需重复选择。<b>绑定后如需更换或解除，请联系学习委员处理。</b></div>
+      </div>
+      <button class="sign-btn" id="signBtn" disabled>请先选择姓名</button>
+    </div>
+
+    <div class="card">
+      <div class="signed-head"><span id="listTitle">本时段</span>已签到 <b id="signedCount">0</b> / <span id="totalCount">46</span> 人</div>
+      <div class="signed-list" id="signedList"></div>
+    </div>
+
+    <div class="foot">每段签到在<b>上课前 15 分钟开放、开课后 15 分钟关闭</b>，时间以系统时间为准<br>每时段仅可签到一次，请勿替签<br><a href="#admin" id="adminLink">学委管理入口</a></div>
+  </div>
+</div>
+
+<!-- ============ 管理端 ============ -->
+<div id="viewAdmin">
+  <div class="login-wrap" id="loginWrap">
+    <div class="login-card">
+      <div class="logo">🔐</div>
+      <h2>学委管理后台</h2>
+      <p>请输入管理员密码</p>
+      <input type="password" id="pwdInput" placeholder="管理员密码" autocomplete="current-password">
+      <div class="login-err" id="loginErr"></div>
+      <button id="loginBtn">进入后台</button>
+      <p style="margin-top:16px"><a href="#" id="backLink" style="color:#94a3b8">← 返回签到页</a></p>
+    </div>
+  </div>
+
+  <div id="adminMain" style="display:none;">
+    <div class="topbar">
+      <h1>📋 签到管理后台</h1>
+      <button class="nav-btn" id="prevDay">‹ 前一天</button>
+      <input type="date" id="dateInput">
+      <button class="nav-btn" id="nextDay">后一天 ›</button>
+      <button class="nav-btn primary" id="todayBtn">今天</button>
+      <button class="nav-btn" id="refreshBtn">🔄 刷新</button>
+      <button class="nav-btn green" id="exportDay">⬇ 导出当天</button>
+      <button class="nav-btn green" id="exportAll">⬇ 导出全部</button>
+      <span class="autotag" style="color:#94a3b8;font-size:11px;">数据云端存储，超14天自动清理</span>
+      <button class="nav-btn bind-nav" id="bindMgrBtn">🔗 设备绑定</button>
+      <button class="nav-btn" id="backBtn">← 签到页</button>
+      <span class="autotag" id="autoTag"></span>
+    </div>
+    <div class="container" id="mainView">
+      <div class="summary" id="admSummary"></div>
+      <div class="table-card">
+        <table>
+          <thead><tr id="theadRow"></tr></thead>
+          <tbody id="admTbody"></tbody>
+        </table>
+      </div>
+      <div class="hint">绿色时间 = 本人签到；带 <span class="adm-tag">代</span> = 学委代签；黄色 = 请假（不计旷课）。可对任意日期使用"代签 / 请假 / 撤销"，操作即时生效。</div>
+    </div>
+    <div class="container" id="bindingsView" style="display:none;">
+      <div class="bind-stat" id="bindStat"></div>
+      <div class="bind-unbound" id="bindUnbound"></div>
+      <div class="table-card">
+        <div style="padding:12px 16px;border-bottom:1px solid #eef2f7;">
+          <input class="search-box" id="bindSearch" type="text" placeholder="🔍 输入姓名查找绑定" style="max-width:300px;">
+        </div>
+        <table>
+          <thead><tr><th>姓名</th><th>设备</th><th>绑定时间</th><th>该设备最后签到</th><th>操作</th></tr></thead>
+          <tbody id="bindTbody"></tbody>
+        </table>
+      </div>
+      <div class="hint">解除绑定后，该同学下次打开页面需重新选择姓名，第一次签到时自动重新绑定。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 导出页（独立新窗口） ============ -->
+<div id="viewExport">
+  <div class="exp-top">
+    <div class="exp-title" id="expTitle">加载中…</div>
+    <button class="exp-excel" id="expExcel">📊 导出成 Excel</button>
+  </div>
+  <div class="exp-wrap">
+    <div class="exp-legend" id="expLegend"></div>
+    <div id="expBody"></div>
+  </div>
+</div>
+
+<!-- 弹层（学生端） -->
+<div class="mask" id="mask">
+  <div class="toast">
+    <div class="toast-icon ok" id="toastIcon">✓</div>
+    <div class="toast-title" id="toastTitle">签到成功</div>
+    <div class="toast-sub" id="toastSub"></div>
+  </div>
+</div>
+
+<div class="wmask" id="wmask">
+  <div class="wpanel">
+    <div class="whead">
+      <button class="nav" id="wPrev">‹</button>
+      <div class="title" id="wTitle">课表加载中…</div>
+      <button class="nav" id="wNext">›</button>
+      <button class="close" id="wClose">✕</button>
+    </div>
+    <div class="wbody" id="wbody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ * 配置区：Supabase 云端
+ * ============================================================ */
+const SB_URL  = 'https://ufingeuwvcvgseezzqar.supabase.co';
+const SB_KEY  = 'sb_publishable_XKTZN1dUro-ejLQfGM3SQg_B2o_SaXK';
+const ADMIN_PASSWORD = 'qiandao123';
+
+// 定位围栏：华南理工大学大学城校区 A3栋（WGS-84 坐标，由高德坐标换算）
+const GEOFENCE = { lat: 23.051055, lng: 113.399987, radius: 150, label: 'A3栋附近150米内' };
+
+/* ============================================================
+ * 课表数据 & 核心逻辑（与服务端同源）
+ * ============================================================ */
+const STUDENTS = [
+  '胡海洋','赖昫羱','杨航','李乐天','李希杰','唐洺燏',
+  '陈俊一','金文浩','钱泓锦','杜天威','程智言','许博杰',
+  '韦超浩','玉散江·艾海提','钱程辉','黄伟铭','李健','柴奥',
+  '霍启辉','廖叶帆','赵泓博','吴飞宇','郑刚涛','付子木',
+  '张祖源','何逸诺','袁庆尧','王建元','黄杰','肖振轩',
+  '吕光城','江浩哲','杨子翔','杨镇林','邱逸涵','黄奕智',
+  '赵一凡','李俊希','刘晨宸','陈妍萓','李斯琴','陈梓童',
+  '王馨艺','刘炳娜','李雪莹','徐少凡'
+];
+const BUCKETS = [
+  { id:'morning',  name:'上午', start:'08:45', end:'12:20' },
+  { id:'afternoon',name:'下午', start:'13:55', end:'17:30' },
+  { id:'evening',  name:'晚上', start:'18:55', end:'21:35' }
+];
+const WEEK1_MONDAY = '2026-08-31';
+const SCHEDULE = [
+  { day:0, bucket:'morning',  name:'线性代数与解析几何', weeks:'3-12,15-18', slots:'3-4', loc:'A3303', teacher:'丘东涛' },
+  { day:0, bucket:'afternoon',name:'微积分Ⅱ(一)', weeks:'3-12,15-18', slots:'5-6', loc:'A3408', teacher:'徐娇' },
+  { day:0, bucket:'afternoon',name:'学术英语（一）上机', weeks:'5-12(单),15-17(单)', slots:'7-8', loc:'待定', teacher:'待定' },
+  { day:0, bucket:'evening',  name:'大学化学', weeks:'15-17', slots:'9-10', loc:'A3405', teacher:'张磊、毕然' },
+  { day:1, bucket:'morning',  name:'画法几何及机械制图(一)', weeks:'3-12,15-16', slots:'1-2', loc:'A3405', teacher:'孙炜' },
+  { day:1, bucket:'morning',  name:'微积分Ⅱ(一)', weeks:'3-12,15-17', slots:'3-4', loc:'A3408', teacher:'徐娇' },
+  { day:1, bucket:'afternoon',name:'习近平新时代中国特色社会主义思想概论', weeks:'3-12,15-16', slots:'5-6', loc:'A3308', teacher:'陈静' },
+  { day:1, bucket:'evening',  name:'制图习题Ⅲ', weeks:'3-12,15-16', slots:'9-10', loc:'A3407', teacher:'孙炜' },
+  { day:2, bucket:'morning',  name:'画法几何及机械制图(一)', weeks:'3-12,15-16', slots:'3-4', loc:'A3405', teacher:'孙炜' },
+  { day:2, bucket:'afternoon',name:'大学化学', weeks:'3-12,15-17', slots:'5-6', loc:'A3405', teacher:'毕然、张磊' },
+  { day:2, bucket:'evening',  name:'C++程序设计基础', weeks:'3-12', slots:'9-11', loc:'A1203', teacher:'董敏', remark:'第15周仅上9-10节' },
+  { day:2, bucket:'evening',  name:'C++程序设计基础', weeks:'15', slots:'9-10', loc:'A1203', teacher:'董敏' },
+  { day:3, bucket:'morning',  name:'学术英语（一）', weeks:'3-12,15-17', slots:'1-2', loc:'A4404', teacher:'刘汉鹏' },
+  { day:3, bucket:'morning',  name:'身体素质', weeks:'3-12,15-18,21-22', slots:'3-4', loc:'生活区田径场', teacher:'杜鹏远' },
+  { day:4, bucket:'morning',  name:'线性代数与解析几何', weeks:'3-11(单),15-17(单)', slots:'1-2', loc:'A3303', teacher:'丘东涛' },
+  { day:4, bucket:'morning',  name:'微积分Ⅱ(一)', weeks:'3-12,15-17', slots:'3-4', loc:'A3408', teacher:'徐娇' },
+  { day:4, bucket:'afternoon',name:'习近平新时代中国特色社会主义思想概论', weeks:'3-12,15-16', slots:'5-6', loc:'A3308', teacher:'陈静' },
+  { day:5, bucket:'morning',  name:'线性代数与解析几何', weeks:'10-12', slots:'3-4', loc:'A2207', teacher:'丘东涛' },
+  { day:5, bucket:'afternoon',name:'C++程序设计基础', weeks:'15-16', slots:'5-8', loc:'机房1', teacher:'董敏' }
+];
+const SLOT_TIMES = {
+  1:['08:50','09:35'], 2:['09:40','10:25'], 3:['10:40','11:25'], 4:['11:30','12:15'],
+  5:['14:00','14:45'], 6:['14:50','15:35'], 7:['15:45','16:30'], 8:['16:35','17:20'],
+  9:['19:00','19:45'], 10:['19:55','20:40'], 11:['20:50','21:35']
+};
+
+function slotRange(slots){
+  const nums=(String(slots).match(/\d+/g)||[]).map(Number);
+  if(!nums.length) return '';
+  return SLOT_TIMES[nums[0]][0]+'-'+SLOT_TIMES[nums[nums.length-1]][1];
+}
+function shanghaiNow(date){
+  date = date || new Date();
+  const parts={};
+  const fmt=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short'});
+  for(const p of fmt.formatToParts(date)) parts[p.type]=p.value;
+  let hour=parseInt(parts.hour,10); if(hour===24) hour=0;
+  return { date:parts.year+'-'+parts.month+'-'+parts.day,
+    time:String(hour).padStart(2,'0')+':'+parts.minute+':'+parts.second,
+    minutes:hour*60+parseInt(parts.minute,10), weekday:parts.weekday };
+}
+const toMinutes = hhmm => { const a=hhmm.split(':').map(Number); return a[0]*60+a[1]; };
+function addDays(d,n){ const a=d.split('-').map(Number); return new Date(Date.UTC(a[0],a[1]-1,a[2]+n)).toISOString().slice(0,10); }
+function dateUTC(d){ const a=d.split('-').map(Number); return Date.UTC(a[0],a[1]-1,a[2]); }
+function termInfo(d){
+  const diff=Math.round((dateUTC(d)-dateUTC(WEEK1_MONDAY))/86400000);
+  if(diff<0) return { week:0, day:(diff%7+7)%7, before:true };
+  return { week:Math.floor(diff/7)+1, day:diff%7 };
+}
+function weekActive(spec, week){
+  if(!spec) return week>=1 && week<=22;
+  return spec.split(/[,，、;；]/).some(part=>{
+    const parity=/单/.test(part)?1:/双/.test(part)?0:-1;
+    const nums=(part.match(/\d+/g)||[]).map(Number);
+    if(!nums.length) return false;
+    const lo=nums[0], hi=nums.length>1?nums[1]:nums[0];
+    return week>=lo && week<=hi && (parity===-1 || week%2===parity);
+  });
+}
+function shiftHHMM(hhmm,deltaMin){
+  const p=hhmm.split(':').map(Number);
+  let total=p[0]*60+p[1]+deltaMin;
+  const hh=Math.floor(total/60), mm=((total%60)+60)%60;
+  return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+function periodsForDate(d){
+  const info=termInfo(d), out=[];
+  for(const b of BUCKETS){
+    const hit=SCHEDULE.filter(s=>s.day===info.day && s.bucket===b.id && weekActive(s.weeks,info.week));
+    if(hit.length){
+      // 该时段第一节课的开始时间 / 最后一节课的结束时间
+      let firstSlot=99, lastSlot=0;
+      for(const s of hit){
+        const nums=String(s.slots).match(/\d+/g).map(Number);
+        const f=Math.min.apply(null,nums), l=Math.max.apply(null,nums);
+        if(f<firstSlot) firstSlot=f;
+        if(l>lastSlot) lastSlot=l;
+      }
+      const classStart=SLOT_TIMES[firstSlot][0];
+      const classEnd=SLOT_TIMES[lastSlot][1];
+      out.push({ id:b.id, name:b.name,
+        start:shiftHHMM(classStart,-15),   // 课前15分钟开放
+        end:shiftHHMM(classStart,15),      // 开课后15分钟关闭
+        classStart, classEnd,
+        courseDetails:hit.map(s=>({
+          name:s.name, loc:s.loc||'待定', teacher:s.teacher||'',
+          slots:String(s.slots).match(/\d+/g).map(Number)
+        })),
+        courses:hit.map(s=>s.name) });
+    }
+  }
+  return out;
+}
+// 指定分钟数落在该时段哪门课上；课间返回该时段下一门课（标记 break）；都没有返回 null
+function courseAt(p, minutes){
+  for(const c of p.courseDetails){
+    for(const n of c.slots){
+      const st=toMinutes(SLOT_TIMES[n][0]), en=toMinutes(SLOT_TIMES[n][1]);
+      if(minutes>=st && minutes<en) return {course:c, break:false};
+    }
+  }
+  let upcoming=null, upStart=9999;
+  for(const c of p.courseDetails){
+    for(const n of c.slots){
+      const st=toMinutes(SLOT_TIMES[n][0]);
+      if(st>minutes && st<upStart){ upStart=st; upcoming=c; }
+    }
+  }
+  return upcoming ? {course:upcoming, break:true} : null;
+}
+function nextOpenAfter(d){
+  for(let n=1;n<=70;n++){
+    const dd=addDays(d,n), ps=periodsForDate(dd);
+    if(ps.length){ const p=ps[0]; return { date:dd,id:p.id,name:p.name,start:p.start,classStart:p.classStart,courses:p.courses }; }
+  }
+  return null;
+}
+function courseView(s, week){
+  return { name:s.name, slots:s.slots, time:slotRange(s.slots), loc:s.loc||'待定', teacher:s.teacher||'',
+    weeks:s.weeks||'全学期', bucket:s.bucket, remark:s.remark||'',
+    active:week==null?true:weekActive(s.weeks,week) };
+}
+function getSchedule(){
+  const t=shanghaiNow(), info=termInfo(t.date);
+  const periods=periodsForDate(t.date).map(p=>{
+    const s=toMinutes(p.start), e=toMinutes(p.end), ce=toMinutes(p.classEnd);
+    let status='waiting';
+    if(t.minutes>=s && t.minutes<e) status='open';
+    else if(t.minutes>=e && t.minutes<ce) status='ongoing';
+    else if(t.minutes>=ce) status='finished';
+    return Object.assign({}, p, { status });
+  });
+  const todayCourses=SCHEDULE.filter(s=>s.day===info.day && weekActive(s.weeks,info.week))
+    .sort((a,b)=>parseInt(a.slots,10)-parseInt(b.slots,10)).map(s=>courseView(s));
+  const current=periods.find(p=>p.status==='open')||null;
+  const ongoing=periods.find(p=>p.status==='ongoing')||null;
+  const waiting=periods.find(p=>p.status==='waiting');
+  const next=(current||ongoing)?null
+    :(waiting?{date:t.date,id:waiting.id,name:waiting.name,start:waiting.start,classStart:waiting.classStart,courses:waiting.courses}
+             :nextOpenAfter(t.date));
+  return { date:t.date, time:t.time, weekday:t.weekday, week:info.week, current, ongoing, next, periods, todayCourses };
+}
+function weekSchedule(date){
+  const info=termInfo(date), monday=addDays(date,-info.day), days=[];
+  for(let i=0;i<7;i++){
+    const d=addDays(monday,i);
+    days.push({ day:i, date:d,
+      courses: SCHEDULE.filter(s=>s.day===i).sort((a,b)=>parseInt(a.slots,10)-parseInt(b.slots,10))
+        .map(s=>courseView(s,info.week)) });
+  }
+  return { week:info.week, weekStart:monday, today:shanghaiNow().date, days };
+}
+
+/* ============================================================
+ * 定位围栏 & 设备标记
+ * ============================================================ */
+function geoDistance(lat1, lng1, lat2, lng2){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function getGeoPosition(){
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject({ code: -1 }); return; }
+    navigator.geolocation.getCurrentPosition(resolve, reject,
+      { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 });
+  });
+}
+function getDeviceId(){
+  let id = localStorage.getItem('dev_id');
+  if (!id) {
+    id = 'd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('dev_id', id);
+  }
+  return id;
+}
+
+/* ---- 设备-姓名绑定（云端 device_bindings 表）---- */
+async function getMyBinding(){
+  const dev = getDeviceId();
+  const r = await fetch(SB_URL+'/rest/v1/device_bindings?device=eq.'+encodeURIComponent(dev)+'&select=name,bound_at', {headers: sbHeaders()});
+  if (!r.ok) return null;  // 表未建等情况：按未绑定处理
+  const rows = await r.json();
+  return rows.length ? rows[0] : null;
+}
+async function createBinding(dev, name){
+  const r = await fetch(SB_URL+'/rest/v1/device_bindings', {
+    method: 'POST',
+    headers: Object.assign({}, sbHeaders(), { Prefer: 'return=representation' }),
+    body: JSON.stringify({ device: dev, name })
+  });
+  if (r.status === 409) return { ok: false, reason: 'conflict' };
+  return { ok: r.ok };
+}
+async function deleteBinding(dev){
+  const r = await fetch(SB_URL+'/rest/v1/device_bindings?device=eq.'+encodeURIComponent(dev), {
+    method: 'DELETE',
+    headers: sbHeaders()
+  });
+  return r.ok;
+}
+async function getAllBindings(){
+  const r = await fetch(SB_URL+'/rest/v1/device_bindings?select=device,name,bound_at&order=bound_at.asc', {headers: sbHeaders()});
+  if (!r.ok) throw new Error('绑定列表查询失败 '+r.status);
+  return await r.json();
+}
+async function getDeviceLastSeen(){
+  // 每台设备的最后签到时间（从 records 聚合，取本学期数据量很小）
+  const r = await fetch(SB_URL+'/rest/v1/records?select=device,ts&device=not.is.null', {headers: sbHeaders()});
+  if (!r.ok) return {};
+  const rows = await r.json();
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.device] || row.ts > map[row.device]) map[row.device] = row.ts;
+  }
+  return map;
+}
+
+/* ============================================================
+ * Supabase 直连
+ * ============================================================ */
+function sbHeaders(){
+  return { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json' };
+}
+async function getDayRecords(date){
+  let url=SB_URL+'/rest/v1/records?date=eq.'+encodeURIComponent(date)+'&select=period,name,time,ts,device,lat,lng,acc,status';
+  let r=await fetch(url,{headers:sbHeaders(),cache:'no-store'});
+  // 数据库尚未加新字段时（400），降级为旧字段查询
+  if(r.status===400){
+    url=SB_URL+'/rest/v1/records?date=eq.'+encodeURIComponent(date)+'&select=period,name,time,ts';
+    r=await fetch(url,{headers:sbHeaders(),cache:'no-store'});
+  }
+  if(!r.ok) throw new Error('云数据库查询失败 '+r.status);
+  const rows=await r.json(), day={};
+  for(const row of rows){
+    if(!day[row.period]) day[row.period]={};
+    day[row.period][row.name]={time:row.time,ts:row.ts,device:row.device||'',lat:row.lat,lng:row.lng,acc:row.acc,status:row.status||'normal'};
+  }
+  return day;
+}
+async function getAllRecords(){
+  let r=await fetch(SB_URL+'/rest/v1/records?select=date,period,name,time,status&order=date.asc,period.asc,name.asc',{headers:sbHeaders(),cache:'no-store'});
+  // 数据库尚未加 status 字段时（400），降级为旧字段查询
+  if(r.status===400){
+    r=await fetch(SB_URL+'/rest/v1/records?select=date,period,name,time&order=date.asc,period.asc,name.asc',{headers:sbHeaders(),cache:'no-store'});
+  }
+  if(!r.ok) throw new Error('云数据库查询失败 '+r.status);
+  return await r.json();
+}
+/* 管理员专用：代签 / 请假 / 撤销（服务端 SECURITY DEFINER 函数，校验管理员密码，绕过签到窗口限制） */
+async function adminSetRecord(date,period,name,kind){
+  let r=await fetch(SB_URL+'/rest/v1/rpc/admin_set_record',{
+    method:'POST',
+    headers:sbHeaders(),
+    body:JSON.stringify({ p_date:date, p_period:period, p_name:name, p_kind:kind, p_secret:ADMIN_PASSWORD })
+  });
+  if(r.status===404) return {ok:false,error:'数据库函数未创建，请先运行最新 SQL'};
+  if(!r.ok) return {ok:false,error:'请求失败 '+r.status};
+  try{ return await r.json(); }catch{ return {ok:false,error:'返回解析失败'}; }
+}
+async function insertRecord(date,period,name,time,ts,extra){
+  const base={date,period,name,time,ts};
+  let payload=Object.assign({},base, extra||{});
+  let r=await fetch(SB_URL+'/rest/v1/records',{
+    method:'POST',
+    headers:Object.assign({},sbHeaders(),{Prefer:'return=representation'}),
+    body:JSON.stringify(payload)
+  });
+  // 数据库尚未加新字段时（400），去掉新字段重试
+  if(r.status===400 && extra && Object.keys(extra).length){
+    r=await fetch(SB_URL+'/rest/v1/records',{
+      method:'POST',
+      headers:Object.assign({},sbHeaders(),{Prefer:'return=representation'}),
+      body:JSON.stringify(base)
+    });
+  }
+  if(r.status===409) return {inserted:false,reason:'duplicate'};
+  if(!r.ok){
+    const txt=await r.text();
+    if(txt.includes('23505')||txt.includes('duplicate')) return {inserted:false,reason:'duplicate'};
+    return {inserted:false,reason:'error',detail:txt.slice(0,200)};
+  }
+  return {inserted:true};
+}
+
+/* ============================================================
+ * Excel 导出（HTML 表格 .xls，Excel / WPS 直接打开并保留颜色标注）
+ * ============================================================ */
+function downloadBlob(content, filename, mime){
+  const blob=new Blob([content],{type:mime});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+const EXCEL_CSS =
+  'body{font-family:"Microsoft YaHei",SimSun,sans-serif;color:#1e293b;}'+
+  'h2{font-size:18px;margin:18px 0 6px;} h3{font-size:15px;margin:22px 0 8px;}'+
+  'table{border-collapse:collapse;margin-bottom:10px;}'+
+  'th,td{border:1px solid #9aa6b8;padding:6px 10px;font-size:12.5px;}'+
+  'th{background:#eef2f7;text-align:left;white-space:nowrap;}'+
+  '.cs-abs{background:#fde2e2;color:#c62828;font-weight:bold;text-align:center;}'+
+  '.cs-leave{background:#fff7d6;color:#8a6d1a;text-align:center;}'+
+  '.cs-ok{color:#0c8a51;white-space:nowrap;}'+
+  '.cs-wait{color:#cbd5e1;text-align:center;}'+
+  '.adm-tag{color:#2b5fd9;font-weight:bold;}'+
+  '.exp-stat{color:#64748b;font-size:12px;margin:0 0 8px;}';
+function buildExcelFile(titleHtml, sectionsHtml){
+  return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'+
+    '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'+
+    '<x:Name>签到记录</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'+
+    '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'+
+    '<style>'+EXCEL_CSS+'</style></head><body>'+titleHtml+sectionsHtml+'</body></html>';
+}
+
+/* ============================================================
+ * 路由：学生端 / 管理端
+ * ============================================================ */
+const $ = id => document.getElementById(id);
+// 顶部工具条吸顶高度自适应：避免表格首行被工具条遮挡
+function syncStickyTop(){
+  let el = document.querySelector('.exp-top') || document.querySelector('#viewAdmin .topbar');
+  if(el && el.offsetHeight) document.documentElement.style.setProperty('--tb-h', el.offsetHeight+'px');
+}
+window.addEventListener('resize', syncStickyTop);
+function route(){
+  const h = location.hash;
+  if(h.indexOf('#export-day/')===0){
+    document.body.classList.add('exp-mode');
+    initExport('day', decodeURIComponent(h.slice('#export-day/'.length)));
+  }else if(h==='#export-all'){
+    document.body.classList.add('exp-mode');
+    initExport('all', null);
+  }else{
+    document.body.classList.remove('exp-mode');
+    const isAdmin = h === '#admin';
+    document.body.classList.toggle('admin-mode', isAdmin);
+    syncStickyTop();
+    if(isAdmin) initAdmin(); else initStudent();
+  }
+}
+window.addEventListener('hashchange', route);
+
+/* ============================================================
+ * 学生端逻辑
+ * ============================================================ */
+let studentInited=false, state=null;
+let selected=localStorage.getItem('checkin_name')||'';
+let submitting=false, locating=false, boundName='';
+const WEEKDAYS=['周日','周一','周二','周三','周四','周五','周六'];
+
+async function refresh(){
+  try{
+    const sched=getSchedule();
+    const [day,binding]=await Promise.all([getDayRecords(sched.date), getMyBinding()]);
+    boundName = binding && STUDENTS.includes(binding.name) ? binding.name : '';
+    if(boundName) selected=boundName;
+    const signed={}, leave={};
+    for(const p of sched.periods){
+      signed[p.id]=Object.entries(day[p.id]||{}).filter(e=>e[1].status!=='leave')
+        .map(e=>({name:e[0],time:e[1].time,status:e[1].status})).sort((a,b)=>a.time.localeCompare(b.time));
+      leave[p.id]=Object.entries(day[p.id]||{}).filter(e=>e[1].status==='leave').map(e=>e[0]);
+    }
+    state=Object.assign({}, sched, {totalStudents:STUDENTS.length, students:STUDENTS, signed, leave});
+    renderStudent();
+  }catch(e){
+    $('clock').textContent='网络连接失败，正在重试…';
+  }
+}
+function renderStudent(){
+  const open=!!state.current;
+  const inClass=!!state.ongoing;
+  const nextToday=!!(state.next && state.next.date===state.date);
+  const shownPeriod=open?state.current.id:inClass?state.ongoing.id:(nextToday?state.next.id:null);
+
+  // 设备绑定状态
+  const banner=$('bindBanner');
+  if(boundName){
+    banner.style.display='block';
+    banner.innerHTML='🔗 本设备已绑定：<b>'+boundName+'</b><small>签到将以此身份提交，无需重复选择。如需更换绑定，请联系学委在管理后台解除。</small>';
+    $('pickZone').style.display='none';
+    selected=boundName;
+  }else{
+    banner.style.display='none';
+    $('pickZone').style.display='';
+  }
+  const wd=WEEKDAYS[new Date(state.date+'T00:00:00+08:00').getDay()];
+  const weekTxt=state.week>0?'第'+state.week+'周 ':'';
+  $('clock').textContent='今天 '+weekTxt+state.date+' '+wd+'　'+state.time;
+
+  const card=$('statusCard');
+  card.className='status-card card '+(open?'is-open':inClass?'is-class':'is-closed');
+  if(open){
+    $('statusLabel').textContent=state.current.name+'签到进行中';
+    $('statusSub').textContent='开放 '+state.current.start+' ～ '+state.current.end+'（'+state.current.classStart+' 上课），请尽快签到';
+    $('countdownCap').textContent='距离签到截止';
+  }else if(inClass){
+    const p=state.ongoing;
+    const nowMin=toMinutes(state.time);
+    const hit=courseAt(p, nowMin);
+    // 当前课程名（课间则提示下一节）
+    let courseTxt;
+    if(hit){
+      courseTxt=(hit.break?'课间休息，下一节：':'正在上：')+hit.course.name+'（'+hit.course.loc+'）';
+    }else courseTxt=p.courses.join('、');
+    // 本人在该时段的状态
+    const meSigned=selected && (state.signed[p.id]||[]).some(s=>s.name===selected);
+    const meLeave=selected && (state.leave[p.id]||[]).includes(selected);
+    let tail='';
+    if(!selected) tail='';
+    else if(meLeave) tail='　<span class="lv-warn">📌 你已请假</span>';
+    else if(!meSigned) tail='　<span class="miss-warn">⚠ 你尚未签到，请尽快联系学习委员补签</span>';
+    $('statusLabel').textContent=p.name+'上课中';
+    $('statusSub').innerHTML=courseTxt+tail;
+    $('countdownCap').textContent='距离本时段下课';
+  }else if(nextToday){
+    $('statusLabel').textContent='当前不在签到时间';
+    $('statusSub').textContent='下一段：'+state.next.name+'签到 '+state.next.start+' 开放（'+state.next.classStart+' 上课）';
+    $('countdownCap').textContent='距离开放还有';
+  }else if(state.next){
+    const nd=new Date(state.next.date+'T00:00:00+08:00');
+    $('statusLabel').textContent='今天没有课 🎉';
+    $('statusSub').textContent='下一节课：'+state.next.date.slice(5)+' '+WEEKDAYS[nd.getDay()]+' '+state.next.name+' '+state.next.start+' 开放（'+state.next.classStart+' 上课）';
+    $('countdownCap').textContent='距离下一节课还有';
+  }else{
+    $('statusLabel').textContent='本学期课程已结束';
+    $('statusSub').textContent=''; $('countdownCap').textContent='';
+  }
+
+  $('periodTitle').style.display = state.periods.length ? '' : 'none';
+  $('periodBar').innerHTML=state.periods.map(p=>{
+    const cls=p.status==='finished'?'is-closed':'is-'+p.status;
+    const statusDot = p.status==='open' ? '签到中' : p.status==='ongoing' ? '上课中' : p.status==='finished' ? '已结束' : '待开放';
+    // 每时段仅第一节课需要签到，签到时间即该时段窗口 p.start–p.end（第一节课课前15分~课后15分）
+    return '<div class="period-chip '+cls+'"><span class="dot"></span>'+p.name+' · '+statusDot+
+      '<span class="range">签到 '+p.start+' – '+p.end+'</span>'+
+      '<div class="crs">'+(p.courses||[]).join('、')+'</div></div>';
+  }).join('');
+
+  const kw=$('search').value.trim();
+  const list=state.students.filter(n=>!kw||n.includes(kw));
+  $('nameGrid').innerHTML=list.length
+    ? list.map(n=>{
+        const done=shownPeriod && state.signed[shownPeriod] && state.signed[shownPeriod].some(s=>s.name===n);
+        const onLeave=shownPeriod && state.leave[shownPeriod] && state.leave[shownPeriod].includes(n);
+        return '<div class="name-chip '+(n===selected?'selected':'')+' '+(onLeave?'leave':done?'done':'')+'" data-name="'+n+'">'+(onLeave?'假 ':done?'✓ ':'')+n+'</div>';
+      }).join('')
+    : '<div class="empty-tip">没有找到匹配的同学</div>';
+
+  $('todayList').innerHTML=state.todayCourses.length
+    ? state.todayCourses.map(c=>
+      '<div class="course-item"><div class="course-name">'+c.name+'</div>'+
+      '<div class="course-meta"><span class="tag">🕙</span> '+c.time+'（第'+c.slots+'节）</div>'+
+      '<div class="course-meta"><span class="tag">📍</span> '+c.loc+(c.teacher?'　·　'+c.teacher:'')+'</div>'+
+      (c.remark?'<div class="course-remark">💡 '+c.remark+'</div>':'')+'</div>').join('')
+    : '<div class="day-empty">今天没有课 🎉<br>好好休息，下节课见～</div>';
+
+  const signedArr=shownPeriod?(state.signed[shownPeriod]||[]):[];
+  const leaveArr=shownPeriod?(state.leave[shownPeriod]||[]):[];
+  $('listTitle').textContent=open?'本时段':inClass?state.ongoing.name:nextToday?state.next.name:'今日';
+  $('signedCount').textContent=signedArr.length;
+  $('totalCount').textContent=state.totalStudents;
+  if(shownPeriod){
+    const chips=signedArr.map(s=>'<span class="signed-item">'+s.name+'<span class="t">'+s.time.slice(0,5)+'</span></span>');
+    chips.push(...leaveArr.map(n=>'<span class="signed-item leave">'+n+'<span class="t">请假</span></span>'));
+    $('signedList').innerHTML=chips.length
+      ? chips.join('')
+      : '<span class="signed-none">还没有人签到，快来第一个签吧～</span>';
+  }else{
+    $('signedList').innerHTML='<span class="signed-none">今天没有课程安排 🎉</span>';
+  }
+
+  const btn=$('signBtn');
+  if(locating){ btn.disabled=true; btn.textContent='正在定位，请允许获取位置…'; return; }
+  if(submitting){ btn.disabled=true; btn.textContent='提交中…'; return; }
+  if(open){
+    btn.disabled=!selected;
+    btn.textContent=selected?'确认签到（'+selected+'）':'请先选择姓名';
+  }else if(inClass){
+    btn.disabled=true;
+    btn.textContent='签到时间已截止';
+  }else{
+    btn.disabled=true;
+    btn.textContent=nextToday?'未在签到时间':(state.next?'今日无课':'暂无课程安排');
+  }
+}
+function tick(){
+  if(!state) return;
+  let target, now=Date.now();
+  if(state.current) target=new Date(state.date+'T'+state.current.end+':00+08:00').getTime();
+  else if(state.ongoing) target=new Date(state.date+'T'+state.ongoing.classEnd+':00+08:00').getTime();
+  else if(state.next) target=new Date(state.next.date+'T'+state.next.start+':00+08:00').getTime();
+  else { $('countdown').textContent='00:00:00'; return; }
+  let diff=Math.max(0,Math.floor((target-now)/1000));
+  const h=String(Math.floor(diff/3600)).padStart(2,'0');
+  const m=String(Math.floor(diff%3600/60)).padStart(2,'0');
+  const s=String(diff%60).padStart(2,'0');
+  $('countdown').textContent=h+':'+m+':'+s;
+}
+function showToast(type,title,sub){
+  const icon=$('toastIcon');
+  icon.className='toast-icon '+type;
+  icon.textContent=type==='ok'?'✓':type==='warn'?'!':'✕';
+  $('toastTitle').textContent=title;
+  $('toastSub').textContent=sub||'';
+  $('mask').classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>$('mask').classList.remove('show'),2200);
+}
+let weekData=null;
+function openWeek(date){
+  weekData=weekSchedule(date||state.date);
+  $('wTitle').textContent='第'+weekData.week+'周 · '+weekData.weekStart.slice(5)+' 起';
+  $('wbody').innerHTML=weekData.days.map(dd=>{
+    const badge=dd.date===weekData.today?'<span class="today-badge">今天</span>':'';
+    const tid=dd.date===weekData.today?' id="wToday"':'';
+    return '<div class="wday"'+tid+'><div class="wday-head">'+
+      ['周一','周二','周三','周四','周五','周六','周日'][dd.day]+
+      '<span class="d">'+dd.date.slice(5)+'</span>'+badge+'</div>'+
+      (dd.courses.length
+        ? dd.courses.map(c=>'<div class="wcourse '+(c.active?'':'off')+'"><div class="nm">'+c.name+'</div>'+
+          '<div class="mm">🕙 '+c.time+'（第'+c.slots+'节）　📍 '+c.loc+(c.teacher?'　·　'+c.teacher:'')+'</div>'+
+          '<div class="wk">📅 第 '+c.weeks+' 周'+(c.remark?'　·　'+c.remark:'')+'</div></div>').join('')
+        : '<div class="wnone">无课程安排</div>')+'</div>';
+  }).join('');
+  const t=document.getElementById('wToday');
+  if(t) $('wbody').scrollTop=t.offsetTop-8;
+  $('wmask').classList.add('show');
+}
+function initStudent(){
+  if(studentInited) return;
+  studentInited=true;
+  $('nameGrid').addEventListener('click',e=>{
+    const chip=e.target.closest('.name-chip');
+    if(!chip||!chip.dataset.name) return;
+    selected=chip.dataset.name;
+    localStorage.setItem('checkin_name',selected);
+    renderStudent();
+  });
+  $('search').addEventListener('input',()=>state&&renderStudent());
+  $('signBtn').addEventListener('click',async()=>{
+    if(!selected||submitting||locating) return;
+    const sched=getSchedule();
+    if(!sched.current){
+      showToast('err','现在不在签到时间',sched.next?'下一段 '+sched.next.name+' '+sched.next.start+' 开放':'');
+      return;
+    }
+    if(!STUDENTS.includes(selected)){
+      showToast('err','签到失败','名单里没有这位同学');
+      return;
+    }
+    // 第 1 层：定位围栏校验
+    let pos;
+    locating=true; renderStudent();
+    try{
+      pos=await getGeoPosition();
+    }catch(e){
+      locating=false; renderStudent();
+      const tips={
+        1:'定位权限被拒绝：请在浏览器设置中允许获取位置后重试',
+        2:'定位信号弱，请到教室窗边或室外后重试',
+        3:'定位超时，请检查手机定位是否开启后重试',
+        [-1]:'当前浏览器不支持定位，请换用手机浏览器'
+      };
+      showToast('err','无法获取你的位置', tips[e.code]||'请开启手机定位后重试');
+      return;
+    }
+    locating=false;
+    const here=pos.coords;
+    const d=geoDistance(here.latitude, here.longitude, GEOFENCE.lat, GEOFENCE.lng);
+    if(d > GEOFENCE.radius){
+      showToast('err','你不在签到范围内',
+        '必须在'+GEOFENCE.label+'签到，当前距 A3栋约 '+Math.round(d)+' 米');
+      return;
+    }
+    submitting=true; renderStudent();
+    try{
+      const devId=getDeviceId();
+      const extra={ device:devId, lat:+here.latitude.toFixed(6), lng:+here.longitude.toFixed(6), acc:Math.round(here.accuracy||0) };
+      const res=await insertRecord(sched.date,sched.current.id,selected,sched.time,Date.now(),extra);
+      if(res.inserted){
+        showToast('ok','签到成功',selected+'　'+sched.current.name+'　'+sched.time);
+        // 首次签到：自动绑定设备与本人
+        if(!boundName){
+          const b=await createBinding(devId, selected);
+          if(b.ok){ boundName=selected; renderStudent(); }
+        }
+      }
+      else if(res.reason==='duplicate'){
+        const day=await getDayRecords(sched.date);
+        const rec=day[sched.current.id]&&day[sched.current.id][selected];
+        showToast('warn','已经签过到啦',rec?rec.time:'');
+      }else showToast('err','签到失败','现在可能不在签到时间，请重试');
+    }catch(e){
+      showToast('err','网络错误','请检查网络后重试');
+    }
+    submitting=false;
+    await refresh();
+  });
+  $('mask').addEventListener('click',()=>$('mask').classList.remove('show'));
+  $('weekBtn').addEventListener('click',()=>openWeek());
+  $('wClose').addEventListener('click',()=>$('wmask').classList.remove('show'));
+  $('wmask').addEventListener('click',e=>{ if(e.target===$('wmask')) $('wmask').classList.remove('show'); });
+  $('wPrev').addEventListener('click',()=>weekData&&openWeek(addDays(weekData.weekStart,-7)));
+  $('wNext').addEventListener('click',()=>weekData&&openWeek(addDays(weekData.weekStart,7)));
+
+  refresh();
+  setInterval(refresh,20000);
+  setInterval(tick,1000);
+}
+
+/* ============================================================
+ * 管理端逻辑
+ * ============================================================ */
+let adminInited=false, adminLoggedIn=false;
+let admToday='', curDate='', admRecords=null;
+
+// 自动清理14天前的签到记录（管理员打开后台时触发）
+async function deleteOldRecords(){
+  try{
+    const cutoff=addDays(shanghaiNow().date,-14);
+    const r=await fetch(SB_URL+'/rest/v1/records?date=lt.'+cutoff,{
+      method:'DELETE',headers:sbHeaders(),cache:'no-store'});
+    if(r.ok){
+      const n=JSON.parse(r.headers.get('Content-Range')||'bytes 0-0/0').split('/')[1]||0;
+      if(n>0) console.log('[自动清理] 已删除 '+n+' 条14天前旧记录（截止 '+cutoff+'）');
+    }
+  }catch(e){ /* 静默失败，不影响正常使用 */ }
+}
+async function loadAdminRecords(){
+  await deleteOldRecords();
+  const day=await getDayRecords(curDate);
+  const periods=periodsForDate(curDate);
+  for(const p of periods) if(!day[p.id]) day[p.id]={};  // 无记录时段补空对象，防止渲染中断
+  admRecords={ date:curDate, week:termInfo(curDate).week,
+    students:STUDENTS, periods, records:day };
+  renderAdmin();
+}
+// 异常检测：同设备多人 / 2秒内连续签到 / 位置超出围栏
+function periodAlerts(p, records){
+  const src=records[p.id]||{};
+  const entries=Object.keys(src).map(nm=>({name:nm, time:src[nm].time, ts:src[nm].ts, device:src[nm].device, lat:src[nm].lat, lng:src[nm].lng}));
+  const alerts=[];
+  // 同设备
+  const byDev={};
+  entries.forEach(e=>{ if(e.device){ (byDev[e.device]=byDev[e.device]||[]).push(e.name); }});
+  Object.keys(byDev).forEach(k=>{
+    if(byDev[k].length>1) alerts.push('📱 同一设备替签嫌疑：'+byDev[k].join('、'));
+  });
+  // 2秒内连续签到
+  const withTs=entries.filter(e=>e.ts).sort((a,b)=>a.ts-b.ts);
+  for(let i=0;i<withTs.length;i++){
+    const grp=[withTs[i]];
+    while(i+1<withTs.length && withTs[i+1].ts-withTs[i].ts<=2000){ i++; grp.push(withTs[i]); }
+    if(grp.length>1) alerts.push('⏱ '+grp.length+' 人在 '+grp[0].time.slice(0,8)+' 前后2秒内签到：'+grp.map(e=>e.name).join('、'));
+  }
+  // 位置异常
+  const far=entries.filter(e=>typeof e.lat==='number' &&
+    geoDistance(e.lat,e.lng,GEOFENCE.lat,GEOFENCE.lng)>GEOFENCE.radius);
+  if(far.length) alerts.push('📍 签到位置超出围栏：'+far.map(e=>e.name).join('、'));
+  return alerts;
+}
+function renderAdmin(){
+  const students=admRecords.students, periods=admRecords.periods, records=admRecords.records;
+  const weekTxt=admRecords.week>0?'第'+admRecords.week+'周 · ':'';
+  if(periods.length){
+    // 预警横幅
+    let banner='';
+    const flagged=periods.map(p=>({name:p.name, items:periodAlerts(p,records)})).filter(x=>x.items.length);
+    if(flagged.length){
+      banner='<div class="alert-card"><div class="alert-title">⚠ 异常签到预警（请人工核实）</div>'+
+        flagged.map(x=>'<div class="alert-period">【'+x.name+'】</div>'+
+          x.items.map(t=>'<div class="alert-line">'+t+'</div>').join('')).join('')+'</div>';
+    }
+    // 前置名单：未签到 / 请假（全校准：未签到=全天任何时段都无签到且未请假；请假去重）
+    const signedSet=new Set(), lvSet=new Set();
+    for(const p of periods){
+      const all=records[p.id]||{};
+      for(const n of Object.keys(all)){
+        if(all[n].status==='leave') lvSet.add(n); else signedSet.add(n);
+      }
+    }
+    const missArr=students.filter(n=> !signedSet.has(n) && !lvSet.has(n));
+    const lvArr=[...lvSet];
+    const fc = o=>'<div class="front-card '+o.cls+'"><div class="fc-title">'+o.title+'</div>'+
+      '<div class="fc-names">'+ (o.names.length ? o.names.map(n=>'<span class="fc-chip">'+n+'</span>').join('') : '<span class="fc-empty">'+o.empty+'</span>') +'</div></div>';
+    const front = fc({cls:'miss', title:'🚨 未签到名单（'+missArr.length+' 人 · 请提醒）', names:missArr, empty:'✅ 全员均已签到'}) +
+                  fc({cls:'leave', title:'📝 请假名单（'+lvArr.length+' 人）', names:lvArr, empty:'-- 暂无请假 --'});
+    $('admSummary').innerHTML=banner+front+periods.map(p=>{
+      const all=records[p.id]||{};
+      const names=Object.keys(all);
+      const present=names.filter(n=>all[n].status!=='leave');
+      const leaves=names.filter(n=>all[n].status==='leave');
+      const missing=students.filter(n=>!names.includes(n));
+      const cnt=present.length, total=students.length;
+      const pct=Math.round(cnt/total*100);
+      const color=cnt===total&&!leaves.length?'#18c269':cnt>=total*0.8?'#f6b73c':'#ef4444';
+      return '<div class="sum-card '+(cnt===total&&!leaves.length?'full':'')+'">'+
+        '<div class="pname">'+p.name+'　<span style="font-weight:400;color:#94a3b8;font-size:12px">'+p.start+'-'+p.end+'</span></div>'+
+        '<div class="pcrs">'+(p.courses||[]).join('、')+'</div>'+
+        '<div class="pnum" style="color:'+color+'">'+cnt+'<span class="all"> / '+total+'</span></div>'+
+        '<div class="bar"><i style="width:'+pct+'%;background:'+color+'"></i></div>'+
+        '<div class="missing">'+
+          (missing.length?'<b>未签到：</b>'+missing.join('、'):'')+
+          (leaves.length?(missing.length?'<br>':'')+'<b style="color:#b9852a">请假：</b>'+leaves.join('、'):'')+
+          (!missing.length&&!leaves.length?'✅ 全员到齐':'')+'</div></div>';
+    }).join('');
+  }else{
+    $('admSummary').innerHTML='<div class="notice-card">📭 该日期无课程安排（周末 / 节假日 / 非教学周）</div>';
+  }
+  $('theadRow').innerHTML='<th>姓名</th>'+periods.map(p=>'<th>'+p.name+' <span style="font-weight:400">('+p.start+'-'+p.end+')</span></th>').join('');
+  // 管理后台也按逐列排序（未签到→请假→已签到，上午列优先）
+  const toM2=h=>{const a=h.split(':').map(Number);return a[0]*60+a[1];};
+  const now2=shanghaiNow();
+  const rO2=st=>st==='absent'?0:st==='leave'?1:st==='present'?2:3;
+  const sortedAdm=students.map((n,idx)=>{
+    const ranks=[];
+    for(const p of periods){
+      const rec=(records[p.id]||{})[n];
+      let st;
+      if(rec) st=rec.status==='leave'?'leave':'present';
+      else if(now2.date>curDate) st='absent';
+      else if(now2.date<curDate) st='absent';
+      else { // 今天
+        if(now2.minutes>=toM2(p.end)) st='absent';
+        else if(now2.minutes>=toM2(p.start)) st='absent'; // 已开放但未签=未签到
+        else st='present'; // 还没开放的不算缺勤
+      }
+      ranks.push(rO2(st));
+    }
+    return {n,idx,ranks};
+  }).sort((a,b)=>{
+    for(let i=0;i<a.ranks.length;i++){
+      if(a.ranks[i]!==b.ranks[i]) return a.ranks[i]-b.ranks[i];
+    }
+    return a.idx-b.idx;
+  });
+  $('admTbody').innerHTML=sortedAdm.map((item,i)=>{
+    const n=item.n;
+    const cells=periods.map(p=>{
+      const rec=(records[p.id]||{})[n];
+      if(rec){
+        if(rec.status==='leave'){
+          return '<td class="act-cell"><span class="lv-tag">请假</span> <button class="mini-btn revoke" data-period="'+p.id+'" data-name="'+n+'" data-action="revoke">撤销</button></td>';
+        }
+        const tag=rec.status==='admin'?' <span class="adm-tag">代</span>':'';
+        const undo=rec.status==='admin'?' <button class="mini-btn revoke" data-period="'+p.id+'" data-name="'+n+'" data-action="revoke">撤销</button>':'';
+        return '<td class="time act-cell">'+rec.time+tag+undo+'</td>';
+      }
+      return '<td class="act-cell">'+
+        '<button class="mini-btn sign" data-period="'+p.id+'" data-name="'+n+'" data-action="present">代签</button>'+
+        '<button class="mini-btn leave" data-period="'+p.id+'" data-name="'+n+'" data-action="leave">请假</button></td>';
+    }).join('');
+    return '<tr><td>'+(i+1)+'. '+n+'</td>'+cells+'</tr>';
+  }).join('');
+  $('autoTag').textContent=curDate===admToday?'🔴 '+weekTxt+'今天 · 每15秒自动刷新':weekTxt;
+}
+function shiftCurDate(n){
+  curDate=addDays(curDate,n);
+  $('dateInput').value=curDate;
+  loadAdminRecords();
+}
+async function openExport(kind){
+  // 每次点击导出前先刷新云端数据，确保未签到/请假名单为最新
+  try{ await loadAdminRecords(); }catch(e){}
+  const hash = kind==='day' ? '#export-day/'+curDate : '#export-all';
+  window.open(location.pathname+hash,'_blank');
+}
+/* ---- 设备绑定管理 ---- */
+let bindingsData=null;
+async function loadBindings(){
+  try{
+    const [list,lastSeen]=await Promise.all([getAllBindings(), getDeviceLastSeen()]);
+    bindingsData={ list, lastSeen };
+    renderBindings();
+  }catch(e){
+    $('bindStat').textContent='加载失败，请点右上角刷新重试';
+  }
+}
+function fmtShort(isoOrTs){
+  const d=new Date(isoOrTs);
+  if(isNaN(d)) return '';
+  const s=shanghaiNow(d);
+  return s.date.slice(5)+' '+s.time.slice(0,5);
+}
+function renderBindings(){
+  if(!bindingsData) return;
+  const {list,lastSeen}=bindingsData;
+  // 统计
+  $('bindStat').innerHTML='已绑定设备 <span class="big">'+list.length+'</span> / '+STUDENTS.length+' 人'+
+    (list.length===STUDENTS.length?'　🎉 全员已绑定':'');
+  // 未绑定名单
+  const boundNames=list.map(x=>x.name);
+  const unbound=STUDENTS.filter(n=>!boundNames.includes(n));
+  $('bindUnbound').style.display=unbound.length?'block':'none';
+  $('bindUnbound').innerHTML=unbound.length
+    ? '<b>尚未绑定（'+unbound.length+'人）：</b>'+unbound.join('、')+
+      '<br><span style="color:#94a3b8">这些同学完成第一次签到后会自动绑定，无需操作。换了手机/清了浏览器数据也会出现在这里。</span>'
+    : '';
+  // 表格（搜索过滤，按名单顺序）
+  const kw=$('bindSearch').value.trim();
+  const byName={};
+  list.forEach(x=>byName[x.name]=x);
+  const rows=STUDENTS.filter(n=>!kw||n.includes(kw))
+    .filter(n=>byName[n])
+    .map(n=>{
+      const x=byName[n];
+      const devShort=x.device.length>14 ? x.device.slice(0,10)+'…'+x.device.slice(-4) : x.device;
+      const seen=lastSeen[x.device]?fmtShort(lastSeen[x.device]):'—';
+      return '<tr><td class="time" style="color:#1e293b;font-weight:600">'+n+'</td>'+
+        '<td class="dev-id" title="'+x.device+'">'+devShort+'</td>'+
+        '<td class="dev-id">'+fmtShort(x.bound_at)+'</td>'+
+        '<td class="dev-id">'+seen+'</td>'+
+        '<td><button class="unbind-btn" data-name="'+n+'" data-device="'+x.device+'">解除绑定</button></td></tr>';
+    });
+  $('bindTbody').innerHTML=rows.length?rows.join('')
+    :'<tr><td colspan="5" style="padding:24px;text-align:center;color:#94a3b8">没有匹配的绑定记录</td></tr>';
+}
+function enterAdmin(){
+  const now=shanghaiNow();
+  admToday=now.date; curDate=admToday;
+  $('dateInput').value=curDate;
+  $('loginWrap').style.display='none';
+  $('adminMain').style.display='';
+  loadAdminRecords();
+}
+function initAdmin(){
+  if(!adminInited){
+    adminInited=true;
+    $('loginBtn').addEventListener('click',()=>{
+      const pwd=$('pwdInput').value;
+      $('loginErr').textContent='';
+      if(pwd===ADMIN_PASSWORD){
+        adminLoggedIn=true;
+        sessionStorage.setItem('admin_ok','1');
+        enterAdmin();
+      }else $('loginErr').textContent='密码错误，请重试';
+    });
+    $('pwdInput').addEventListener('keydown',e=>{ if(e.key==='Enter') $('loginBtn').click(); });
+    $('prevDay').addEventListener('click',()=>shiftCurDate(-1));
+    $('nextDay').addEventListener('click',()=>shiftCurDate(1));
+    $('todayBtn').addEventListener('click',()=>{ curDate=admToday; $('dateInput').value=curDate; loadAdminRecords(); });
+    $('dateInput').addEventListener('change',e=>{ if(e.target.value){ curDate=e.target.value; loadAdminRecords(); } });
+    $('refreshBtn').addEventListener('click',()=>{ loadAdminRecords(); admToday=shanghaiNow().date; });
+    $('exportDay').addEventListener('click',()=>openExport('day'));
+    $('exportAll').addEventListener('click',()=>openExport('all'));
+    $('admTbody').addEventListener('click',async e=>{
+      const btn=e.target.closest('.mini-btn');
+      if(!btn) return;
+      const period=btn.dataset.period, name=btn.dataset.name, action=btn.dataset.action;
+      const pInfo=admRecords.periods.find(p=>p.id===period);
+      const pName=pInfo?pInfo.name:'';
+      const msg=action==='present' ? '确定为「'+name+'」进行【'+pName+'】代签吗？'
+              : action==='leave'  ? '确定将「'+name+'」标记为【'+pName+'】请假吗？\n请假与旷课区分，不计入未签到。'
+              : '确定撤销「'+name+'」的代签/请假标记吗？撤销后该时段恢复为未签到。';
+      if(!confirm(msg)) return;
+      btn.disabled=true; btn.textContent='…';
+      const res=await adminSetRecord(curDate,period,name,action);
+      if(res.ok){ await loadAdminRecords(); }
+      else { alert('操作失败：'+(res.error||'未知错误')+'\n若提示函数未创建，请先运行最新 SQL。'); await loadAdminRecords(); }
+    });
+    $('bindMgrBtn').addEventListener('click',()=>{
+      const showBindings=$('bindingsView').style.display==='none';
+      $('bindingsView').style.display=showBindings?'':'none';
+      $('mainView').style.display=showBindings?'none':'';
+      $('bindMgrBtn').textContent=showBindings?'📋 返回签到管理':'🔗 设备绑定';
+      if(showBindings) loadBindings();
+    });
+    $('bindSearch').addEventListener('input',()=>renderBindings());
+    $('bindTbody').addEventListener('click',async e=>{
+      const btn=e.target.closest('.unbind-btn');
+      if(!btn) return;
+      const name=btn.dataset.name, dev=btn.dataset.device;
+      if(!confirm('确定解除「'+name+'」的设备绑定吗？\n解除后 TA 下次签到需重新选择姓名并自动绑定。')) return;
+      btn.disabled=true; btn.textContent='解除中…';
+      const ok=await deleteBinding(dev);
+      if(ok){ await loadBindings(); }
+      else { btn.disabled=false; btn.textContent='解除绑定'; alert('操作失败，请重试'); }
+    });
+    $('backBtn').addEventListener('click',()=>{ location.hash=''; });
+    $('backLink').addEventListener('click',e=>{ e.preventDefault(); location.hash=''; });
+    setInterval(()=>{ if(adminLoggedIn&&curDate===admToday) loadAdminRecords(); },15000);
+  }
+  if(sessionStorage.getItem('admin_ok')==='1'){
+    adminLoggedIn=true;
+    enterAdmin();
+  }else{
+    $('loginWrap').style.display='';
+    $('adminMain').style.display='none';
+  }
+}
+
+/* ============================================================
+ * 导出页逻辑（独立窗口：展示表格 + 导出 Excel）
+ * ============================================================ */
+const EXP_WEEKDAYS=['周日','周一','周二','周三','周四','周五','周六'];
+let expInited=false, expCurrent=null;
+
+// 学生某时段状态：present 已签到 / leave 请假 / absent 未签到(旷课) / waiting 窗口未截止
+function expCellState(rec, date, endHHMM){
+  if(rec) return rec.status==='leave' ? 'leave' : 'present';
+  const now=shanghaiNow();
+  if(date<now.date) return 'absent';
+  if(date===now.date && now.minutes>=toMinutes(endHHMM)) return 'absent';
+  return 'waiting';
+}
+// 排序优先级：absent(0) > leave(1) > present(2) > waiting(3)
+const rankOf = st => st==='absent'?0 : st==='leave'?1 : st==='present'?2 : 3;
+// 判断某时段是否已开放（用于排序：已开放但未签 = 视为未签到）
+function sessionStarted(date, startHHMM){
+  const now=shanghaiNow();
+  if(date<now.date) return true;
+  if(date>now.date) return false;
+  return now.minutes >= toMinutes(startHHMM);
+}
+// 构造一天的数据块（排序：未签到 → 请假 → 已签到 → 未截止；同级按缺勤次数降序）
+function buildDayBlock(date, dayRec){
+  const periods=periodsForDate(date);
+  const rows=STUDENTS.map((name,idx)=>{
+    const cells={};
+    // 每列排序权重数组：[上午权重, 下午权重, 晚上权重...]
+    const ranks=[];
+    for(const p of periods){
+      const rec=(dayRec[p.id]||{})[name];
+      const st=expCellState(rec,date,p.end);
+      cells[p.id]={ st, time:rec?rec.time:'', admin:!!(rec&&rec.status==='admin') };
+      // 已开放但未签(waiting) 视为 absent 排序
+      const sortSt = (st==='waiting' && sessionStarted(date,p.start)) ? 'absent' : st;
+      ranks.push(rankOf(sortSt));
+    }
+    return {name, idx, cells, ranks};
+  }).sort((a,b)=>{
+    // 逐列比较：上午列优先，上午相同比下午列，依此类推
+    for(let i=0;i<a.ranks.length;i++){
+      if(a.ranks[i]!==b.ranks[i]) return a.ranks[i]-b.ranks[i];
+    }
+    return a.idx-b.idx;
+  });
+  return {date, periods, rows};
+}
+function expCellHTML(c){
+  if(c.st==='present') return '<td class="cs-ok">'+c.time.slice(0,5)+(c.admin?' <span class="adm-tag">代</span>':'')+'</td>';
+  if(c.st==='leave')   return '<td class="cs-leave">请假</td>';
+  if(c.st==='absent')  return '<td class="cs-abs">未签到</td>';
+  return '<td class="cs-wait">—</td>';
+}
+function blockSectionHTML(block){
+  const info=termInfo(block.date);
+  const wd=EXP_WEEKDAYS[new Date(block.date+'T00:00:00+08:00').getDay()];
+  let nAbs=0,nLv=0,nOk=0;
+  for(const r of block.rows) for(const p of block.periods){
+    const st=r.cells[p.id].st;
+    if(st==='absent')nAbs++; else if(st==='leave')nLv++; else if(st==='present')nOk++;
+  }
+  const head='<h3>'+block.date+' '+wd+'　第'+info.week+'周<small>已签到 '+nOk+' · 请假 '+nLv+' · 未签到 '+nAbs+'（按 未签到→请假→已签到 排序）</small></h3>';
+  const table='<div class="table-card"><table><thead><tr><th class="cs-h">姓名</th>'+
+    block.periods.map(p=>'<th class="cs-h">'+p.name+' '+p.start+'-'+p.end+
+      '<small>'+(p.courses||[]).join('、')+'</small></th>').join('')+'</tr></thead><tbody>'+
+    block.rows.map((r,i)=>'<tr><td>'+(i+1)+'. '+r.name+'</td>'+
+      block.periods.map(p=>expCellHTML(r.cells[p.id])).join('')+'</tr>').join('')+
+    '</tbody></table></div>';
+  return {head, table};
+}
+function expLegendHTML(){
+  return '<b>图例：</b>'+
+    '<span class="sw" style="background:#fde2e2"></span>未签到（旷课，重点标注）'+
+    '<span class="sw" style="background:#fff7d6"></span>请假（轻度标注，不计旷课）'+
+    '<span class="sw" style="background:#fff;border-color:#0c8a51"></span>已签到（绿色时间，<span class="adm-tag">代</span> = 学委代签）'+
+    '<span class="sw" style="background:#fff"></span>— 签到窗口尚未截止，暂不判定';
+}
+async function initExport(kind, date){
+  if(!expInited){
+    expInited=true;
+    $('expExcel').addEventListener('click',()=>{
+      if(!expCurrent) return;
+      const sectionsHtml=expCurrent.blocks.map(b=>{
+        const s=blockSectionHTML(b); return s.head+s.table;
+      }).join('');
+      const file=buildExcelFile(expCurrent.titleHtml, sectionsHtml);
+      const fname=(expCurrent.kind==='day' ? '签到记录_'+expCurrent.date : '签到记录_全部')+'.xls';
+      downloadBlob(file, fname, 'application/vnd.ms-excel;charset=utf-8');
+    });
+  }
+  $('expLegend').innerHTML=expLegendHTML();
+  $('expTitle').innerHTML='正在从云端加载数据…';
+  $('expBody').innerHTML='';
+  expCurrent=null;
+  try{
+    if(kind==='day'){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('日期格式错误');
+      const dayRec=await getDayRecords(date);
+      const block=buildDayBlock(date, dayRec);
+      const wd=EXP_WEEKDAYS[new Date(date+'T00:00:00+08:00').getDay()];
+      $('expTitle').innerHTML='📊 签到记录 · '+date+'<small>'+wd+' · 第'+termInfo(date).week+'周 · 签到窗口：上课前15分钟开放、开课后15分钟关闭</small>';
+      const sec=blockSectionHTML(block);
+      $('expBody').innerHTML = block.periods.length
+        ? (sec.head + sec.table)
+        : '<div class="exp-legend">该日期无课程安排（周末 / 节假日 / 非教学周）。</div>';
+      expCurrent={kind:'day',date,blocks:[block],
+        titleHtml:'<h2>签到记录　'+date+' '+wd+'　第'+termInfo(date).week+'周</h2>'};
+    }else{
+      const rows=await getAllRecords();
+      const all={};
+      for(const r of rows){
+        if(!all[r.date]) all[r.date]={};
+        if(!all[r.date][r.period]) all[r.date][r.period]={};
+        all[r.date][r.period][r.name]={time:r.time,status:r.status||'normal'};
+      }
+      const blocks=Object.keys(all).sort().map(d=>buildDayBlock(d,all[d])).filter(b=>b.periods.length);
+      $('expTitle').innerHTML='📊 签到记录 · 全部<small>共 '+blocks.length+' 个有课日期 · 数据截至当前，打开时为最新</small>';
+      $('expBody').innerHTML=blocks.length
+        ? blocks.map(b=>{ const s=blockSectionHTML(b); return s.head+s.table; }).join('')
+        : '<div class="exp-legend">云端暂无任何签到记录。</div>';
+      expCurrent={kind:'all',blocks,
+        titleHtml:'<h2>签到记录（全部）</h2><div class="exp-stat">共 '+blocks.length+' 个有课日期</div>'};
+    }
+  }catch(e){
+    $('expBody').innerHTML='<div class="exp-legend">❌ 加载失败：'+(e.message||'网络错误')+'<br>请检查网络后，从管理后台重新打开本页。</div>';
+  }
+}
+
+route();
+</script>
+</body>
+</html>
